@@ -2,7 +2,13 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const session = require("express-session");
+const { MongoStore } = require("connect-mongo");
+const dns = require("dns");
+
 require("dotenv").config();
+
+// DNS servers for MongoDB Atlas
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const loginRouter = require("./router/loginRouter");
 const eventRoutes = require("./router/eventRouter");
@@ -19,18 +25,29 @@ const PORT = process.env.PORT || 4000;
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: [
+      process.env.CLIENT_URL,
+      "http://localhost:3000",
+      "http://localhost:5173",
+    ].filter(Boolean),
     credentials: true,
   })
 );
 
 app.use(express.json());
 
+// Session stored in MongoDB
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "my-secret-key",
     resave: false,
     saveUninitialized: false,
+
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: "sessions",
+    }),
+
     cookie: {
       httpOnly: true,
       secure: false,
@@ -127,8 +144,9 @@ async function seedEvents() {
   }
 }
 
-// Connect MongoDB
-const mongoUri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/ticketapp";
+// MongoDB connection
+const mongoUri =
+  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/ticketapp";
 
 mongoose
   .connect(mongoUri)
@@ -139,14 +157,15 @@ mongoose
     await seedEvents();
 
     app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((error) => {
     console.log("MongoDB connection error:", error.message);
+
     console.log("Starting server without a MongoDB connection...");
 
     app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   });

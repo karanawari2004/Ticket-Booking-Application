@@ -145,7 +145,7 @@ function Login() {
   
       localStorage.setItem("userRole", "STAFF");
 
-      navigate("/events");
+      navigate("/sell-ticket");
 
     } catch (error) {
       setError("Backend server is not running");
